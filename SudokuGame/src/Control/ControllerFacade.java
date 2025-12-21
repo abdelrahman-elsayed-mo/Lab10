@@ -8,6 +8,7 @@ import Exceptions.InvalidGameException;
 import Exceptions.InvalidSolutionException;
 import Exceptions.NotFoundException;
 import Generator.GameGenerator;
+import Solver.SudokuSolver;
 import Verifier.SudokuVerifier;
 import java.io.IOException;
 
@@ -19,7 +20,7 @@ public class ControllerFacade implements Viewable ,StorageInterface {
 
     private final SudokuVerifier verifier;
     private final GameGenerator generator;
-    private final Storage storage
+    private final Storage storage;
     private final SudokuSolver solver;
 
     private Game[] games;
@@ -36,9 +37,9 @@ public class ControllerFacade implements Viewable ,StorageInterface {
     @Override
     public Catalog getCatalog() {
         boolean hasUnfinished = storage.hasUnfinishedGame();
-        boolean hasEasy = storage.hasGame(DifficultyEnum.EASY);
-        boolean hasMedium = storage.hasGame(DifficultyEnum.MEDIUM);
-        boolean hasHard = storage.hasGame(DifficultyEnum.HARD);
+        boolean hasEasy = storage.hasGame(Difficulty.EASY);
+        boolean hasMedium = storage.hasGame(Difficulty.MEDIUM);
+        boolean hasHard = storage.hasGame(Difficulty.HARD);
         boolean allModesExist = hasEasy && hasMedium && hasHard;
 
         return new Catalog(hasUnfinished, allModesExist);
@@ -51,7 +52,7 @@ public class ControllerFacade implements Viewable ,StorageInterface {
             int x = getIndexLevel(level);
             if(games[x]!= null){
                 Game game = games[x];
-                //storage.saveUnfinishedGame(game);
+                
                 return game;
             }
             
