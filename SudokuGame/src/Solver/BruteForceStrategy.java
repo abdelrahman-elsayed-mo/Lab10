@@ -7,7 +7,7 @@ public class BruteForceStrategy implements SolvingStrategy {
     public int [] solve(int [][] board) throws InvalidGameException
     {
         SudokuSolver s = new SudokuSolver(board);
-        return s.solve;
+        return s.solve();
     }
     
 }
