@@ -32,3 +32,24 @@ public class Storage {
         makeFolder(F_HARD);
         makeFolder(F_INC);
     }
+    private void makeFolder(String s) {
+        File f = new File(s);
+        if (!f.exists()) {
+            f.mkdir();
+        }
+    }
+
+    public boolean hasUnfinishedGame() {
+        File f = new File(F_INC, GAME_NAME);
+        return f.exists();
+    }
+
+    public boolean hasGame(Difficulty d) {
+        String path = resolveFolder(d);
+        File dir = new File(path);
+        if (dir.exists() && dir.isDirectory()) {
+            String[] content = dir.list();
+            return content != null && content.length > 0;
+        }
+        return false;
+    }
