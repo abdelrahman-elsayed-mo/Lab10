@@ -10,6 +10,8 @@ package Control;
  */
 
 
+
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,114 +20,120 @@ import java.util.Scanner;
 
 public class Storage {
 
-    private static final String F_EASY = "easy";
-    private static final String F_MED = "medium";
-    private static final String F_HARD = "hard";
-    private static final String F_INC = "incomplete";
+    private final String p1 = "easy";
+    private final String p2 = "medium";
+    private final String p3 = "hard";
+    private final String p4 = "incomplete";
     
-    private static final String LOG_NAME = "log.txt";
-    private static final String GAME_NAME = "game.txt";
+    private final String f1 = "log.txt";
+    private final String f2 = "game.txt";
 
     public Storage() {
-        makeFolder(F_EASY);
-        makeFolder(F_MED);
-        makeFolder(F_HARD);
-        makeFolder(F_INC);
+        check(p1);
+        check(p2);
+        check(p3);
+        check(p4);
     }
-    private void makeFolder(String s) {
+
+    private void check(String s) {
         File f = new File(s);
-        if (!f.exists()) {
+        if (f.exists() == false) {
             f.mkdir();
         }
     }
 
     public boolean hasUnfinishedGame() {
-        File f = new File(F_INC, GAME_NAME);
-        return f.exists();
-    }
-
-    public boolean hasGame(Difficulty d) {
-        String path = resolveFolder(d);
-        File dir = new File(path);
-        if (dir.exists() && dir.isDirectory()) {
-            String[] content = dir.list();
-            return content != null && content.length > 0;
+        File x = new File(p4, f2);
+        if (x.exists()) {
+            return true;
         }
         return false;
     }
-    public Game loadGame(Difficulty d) throws IOException {
-        File target;
+
+    public boolean hasGame(Difficulty diff) {
+        String s = getDir(diff);
+        File f = new File(s);
+        if (!f.exists()) return false;
         
-        if (d == null) {
-             target = new File(F_INC, GAME_NAME);
+        String[] l = f.list();
+        if (l == null) return false;
+        
+        return l.length > 0;
+    }
+
+    public Game loadGame(Difficulty diff) throws IOException {
+        File f = null;
+        
+        if (diff == null) {
+             f = new File(p4, f2);
         } else {
-            String p = resolveFolder(d);
-            File dir = new File(p);
-            File[] list = dir.listFiles();
+            String s = getDir(diff);
+            File d = new File(s);
+            File[] all = d.listFiles();
             
-            if (list == null || list.length == 0) {
-                throw new IOException("Empty folder");
+            if (all != null && all.length > 0) {
+                f = all[0];
+            } else {
+                throw new IOException();
             }
-            target = list[0];
         }
 
-        int[][] data = parseFile(target);
-        return new Game(data);
-    }
-    public void saveGame(Difficulty d, Game g) throws IOException {
-        String p = resolveFolder(d);
-        String n = "sudoku_" + System.currentTimeMillis() + ".txt";
-        File f = new File(p, n);
-        
-        saveToFile(f, g.board);
-    }
-
-    public void saveUnfinishedGame(Game g) throws IOException {
-        File f = new File(F_INC, GAME_NAME);
-        saveToFile(f, g.board);
-    }
-
-    public void logAction(String s) throws IOException {
-        File f = new File(F_INC, LOG_NAME);
-        FileWriter fw = new FileWriter(f, true);
-        fw.write(s + "\n");
-        fw.close();
-    }
-
-    private String resolveFolder(Difficulty d) {
-        if (d == Difficulty.EASY) return F_EASY;
-        if (d == Difficulty.MEDIUM) return F_MED;
-        if (d == Difficulty.HARD) return F_HARD;
-        return F_EASY;
-    }
-
-    private int[][] parseFile(File f) throws IOException {
-        int[][] b = new int[9][9];
-        Scanner sc = new Scanner(f);
+        int[][] m = new int[9][9];
+        Scanner scan = new Scanner(f);
         
         int r = 0;
-        while (sc.hasNextLine() && r < 9) {
-            String l = sc.nextLine();
-            String[] sp = l.split(",");
+        while (scan.hasNextLine()) {
+            if (r >= 9) break;
+            String line = scan.nextLine();
+            String[] parts = line.split(",");
             for (int c = 0; c < 9; c++) {
-                if (c < sp.length) {
-                    b[r][c] = Integer.parseInt(sp[c].trim());
-                } else {
-                    b[r][c] = 0;
+                if (c < parts.length) {
+                    m[r][c] = Integer.parseInt(parts[c].trim());
                 }
             }
             r++;
         }
-        sc.close();
-        return b;
+        scan.close();
+        
+        return new Game(m);
     }
 
-    private void saveToFile(File f, int[][] b) throws IOException {
-        PrintWriter pw = new PrintWriter(new FileWriter(f));
+    public void saveGame(Difficulty diff, Game g) throws IOException {
+        String s = getDir(diff);
+        String n = "sudoku_" + System.currentTimeMillis() + ".txt";
+        File f = new File(s, n);
+        
+        doWrite(f, g.board);
+    }
+
+    public void saveUnfinishedGame(Game g) throws IOException {
+        File f = new File(p4, f2);
+        doWrite(f, g.board);
+    }
+
+    public void logAction(String action) throws IOException {
+        File f = new File(p4, f1);
+        FileWriter fw = new FileWriter(f, true);
+        fw.write(action + "\n");
+        fw.close();
+    }
+
+    private String getDir(Difficulty d) {
+        if (d == Difficulty.HARD) return p3;
+        if (d == Difficulty.MEDIUM) return p2;
+        return p1; 
+    }
+
+    private void doWrite(File f, int[][] arr) throws IOException {
+        FileWriter fw = new FileWriter(f);
+        PrintWriter pw = new PrintWriter(fw);
+        
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                pw.print(b[i][j]);
-                if (j < 8) pw.print(",");
+                pw.print(arr[i][j]);
+                if (j != 8) {
+                    pw.print(",");
+                }
             }
             pw.println();
         }
