@@ -49,6 +49,9 @@ public class ViewFacade implements Controllable {
             case 'h':
                 diff = Difficulty.HARD;
                 break;
+            case 'i': 
+            diff = null; 
+            break;
             default:
                 throw new IllegalArgumentException("Invalid difficulty");
         }

@@ -9,7 +9,7 @@ package Control;
  * @author Abdelrahman Elsayed
  */
 public class Game {
-    private final int[][] board;
+    final int[][] board;
 
     public Game(int[][] board) {
         this.board = board;

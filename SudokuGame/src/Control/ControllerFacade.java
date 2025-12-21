@@ -16,20 +16,19 @@ import java.io.IOException;
  *
  * @author Abdelrahman Elsayed
  */
-public class ControllerFacade implements Viewable ,StorageInterface {
+public class ControllerFacade implements Viewable {
 
     private final SudokuVerifier verifier;
     private final GameGenerator generator;
     private final Storage storage;
-    private final SudokuSolver solver;
+    private  SudokuSolver solver;
 
     private Game[] games;
 
     public ControllerFacade() {
         this.verifier = new SudokuVerifier();
         this.generator = new GameGenerator();
-         this.storage = new SudokSolver();
-         this.storage = new Storage();
+        this.storage = new Storage();
         this.games = new Game[3];
 
     }
@@ -70,7 +69,7 @@ public class ControllerFacade implements Viewable ,StorageInterface {
             throw new InvalidSolutionException("Source game is not valid");
         }
         
-        games = generator.generateAllLevels(game);
+        games = generator.generateGame(game);
  
         try {
             storage.saveGame(Difficulty.EASY, games[0]);
@@ -94,7 +93,8 @@ public class ControllerFacade implements Viewable ,StorageInterface {
         if (game.countEmptyCells() != 5) {
             throw new InvalidGameException("Need exactly 5 empty cells");
         }
-        return solver.solve(game);
+        solver = new SudokuSolver(game.getBoard());
+        return solver.solve();
     }
     
     @Override
