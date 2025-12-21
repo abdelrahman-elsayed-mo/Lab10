@@ -53,3 +53,22 @@ public class Storage {
         }
         return false;
     }
+    public Game loadGame(Difficulty d) throws IOException {
+        File target;
+        
+        if (d == null) {
+             target = new File(F_INC, GAME_NAME);
+        } else {
+            String p = resolveFolder(d);
+            File dir = new File(p);
+            File[] list = dir.listFiles();
+            
+            if (list == null || list.length == 0) {
+                throw new IOException("Empty folder");
+            }
+            target = list[0];
+        }
+
+        int[][] data = parseFile(target);
+        return new Game(data);
+    }
