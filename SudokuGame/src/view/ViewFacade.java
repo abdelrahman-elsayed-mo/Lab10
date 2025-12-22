@@ -9,6 +9,9 @@ package view;
  * @author DELL
  */
 
+
+import Control.Game;
+import Exceptions.InvalidGameException;
 import Control.Catalog;
 import Control.Difficulty;
 import Control.Game;
@@ -17,6 +20,7 @@ import Exceptions.InvalidGameException;
 import Exceptions.NotFoundException;
 import Exceptions.InvalidSolutionException;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class ViewFacade implements Controllable {
 
@@ -26,94 +30,71 @@ public class ViewFacade implements Controllable {
         this.controller = controller;
     }
 
-    // ------------------ Startup ------------------
-
     @Override
     public Catalog getCatalog() {
         return controller.getCatalog();
     }
 
-    // ------------------ Load Game ------------------
-
     @Override
     public int[][] getGame(char level) throws NotFoundException {
-        Difficulty diff;
-
-        switch (level) {
-            case 'e':
-                diff = Difficulty.EASY;
-                break;
-            case 'm':
-                diff = Difficulty.MEDIUM;
-                break;
-            case 'h':
-                diff = Difficulty.HARD;
-                break;
-            case 'i': 
-            diff = null; 
-            break;
-            default:
-                throw new IllegalArgumentException("Invalid difficulty");
-        }
-
-        Game game = controller.getGame(diff);
-        return game.getBoard(); // مهم: Game لازم يكون عنده getBoard()
+        Difficulty diff = null;
+        if (level == 'e') diff = Difficulty.EASY;
+        else if (level == 'm') diff = Difficulty.MEDIUM;
+        else if (level == 'h') diff = Difficulty.HARD;
+        
+        Game g = controller.getGame(diff);
+        return g.getBoard();
     }
-
-    // ------------------ Drive Games ------------------
 
     @Override
     public void driveGames(int[][] source) throws InvalidSolutionException {
-        Game solvedGame = new Game(source);
-        controller.driveGames(solvedGame);
+        controller.driveGames(new Game(source));
     }
-
-    // ------------------ Verify ------------------
 
     @Override
     public boolean[][] verifyGame(int[][] board) {
-        Game game = new Game(board);
-        String result = controller.verifyGame(game);
-
+        String result = controller.verifyGame(new Game(board));
         boolean[][] validity = new boolean[9][9];
+        for (int i = 0; i < 9; i++) Arrays.fill(validity[i], true);
 
-        // default: كله صح
-        for (int i = 0; i < 9; i++)
-            for (int j = 0; j < 9; j++)
-                validity[i][j] = true;
-
-        // لو الـ controller بيرجع duplicate info في String
-        // هنا انت بتمسك الخلايا الغلط وتحط false
-        // (هتظبط الجزء ده حسب String اللى صحابك عاملينه)
-
+        if (result != null && result.startsWith("invalid")) {
+            String[] parts = result.split(" ");
+            for (int i = 1; i < parts.length; i++) {
+                try {
+                    String[] coords = parts[i].split(",");
+                    int r = Integer.parseInt(coords[0]);
+                    int c = Integer.parseInt(coords[1]);
+                    validity[r][c] = false;
+                } catch (Exception e) {}
+            }
+        }
         return validity;
     }
 
-    // ------------------ Solve ------------------
-
     @Override
-    public int[][] solveGame(int[][] board) throws InvalidGameException {
-        Game game = new Game(board);
-        int[] solution = controller.solveGame(game);
+    public int[][] solveGame(Game game) throws InvalidGameException {
+    int[] sol = controller.solveGame(game);
+    
+    int[][] currentBoard = game.copy().getBoard();
 
-        // solution: [x1,y1,val1, x2,y2,val2, ...]
-        int n = solution.length / 3;
-        int[][] result = new int[n][3];
-
-        int idx = 0;
-        for (int i = 0; i < n; i++) {
-            result[i][0] = solution[idx++];
-            result[i][1] = solution[idx++];
-            result[i][2] = solution[idx++];
-        }
-
-        return result;
+    if (sol == null || sol.length == 0) {
+        throw new InvalidGameException("No solution found");
     }
 
-    // ------------------ Logging ------------------
+    for (int i = 0; i < sol.length; i += 3) {
+        if (i + 2 < sol.length) {
+            int r = sol[i];
+            int c = sol[i+1];
+            int v = sol[i+2];
+            currentBoard[r][c] = v;
+        }
+    }
+    
+    return currentBoard;
+}
 
     @Override
-    public void logUserAction(UserAction action) throws IOException {
-        controller.logUserAction(action.toString());
+    public void logUserAction(UserAction userAction) throws IOException {
+        controller.logUserAction(userAction.toString());
     }
 }

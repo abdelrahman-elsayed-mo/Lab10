@@ -10,6 +10,7 @@ package view;
  */
 
 import Control.Catalog;
+import Control.Game;
 import Exceptions.NotFoundException;
 import Exceptions.InvalidSolutionException;
 import Exceptions.InvalidGameException;
@@ -25,7 +26,8 @@ public interface Controllable {
 
     boolean[][] verifyGame(int[][] game);
 
-    int[][] solveGame(int[][] game) throws InvalidGameException;
+        
+        int[][] solveGame(Game game) throws InvalidGameException;
 
     void logUserAction(UserAction userAction) throws IOException;
 }

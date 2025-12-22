@@ -9,23 +9,24 @@ package view;
  * @author DELL
  */
 
-import Control.Catalog;
-import Exceptions.NotFoundException;
-import Exceptions.InvalidSolutionException;
-import Exceptions.InvalidGameException;
 
+
+
+
+import Control.Catalog;
+import Control.Game;
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 public class SudokuGameView extends JFrame {
 
     private final Controllable facade;
-    private int[][] board;
-
-    private JButton verifyBtn;
-    private JButton solveBtn;
-    private JButton undoBtn;
+    private int[][] board = new int[9][9];
+    private final UndoManager undoManager = new UndoManager();
+    private JTextField[][] cells = new JTextField[9][9];
+    private JButton verifyBtn, solveBtn, undoBtn;
 
     public SudokuGameView(Controllable facade) {
         this.facade = facade;
@@ -33,133 +34,167 @@ public class SudokuGameView extends JFrame {
         startupFlow();
     }
 
-    // ---------------- UI ----------------
-
     private void initUI() {
-        setTitle("Sudoku");
-        setSize(400, 450);
+        setTitle("Sudoku Game");
+        setSize(550, 650);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        JPanel boardPanel = new JPanel(new GridLayout(9, 9));
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                cells[i][j] = new JTextField();
+                cells[i][j].setHorizontalAlignment(JTextField.CENTER);
+                cells[i][j].setFont(new Font("Arial", Font.BOLD, 20));
+                final int r = i, c = j;
+
+               
+                cells[i][j].addKeyListener(new KeyAdapter() {
+                    @Override
+                    public void keyReleased(KeyEvent e) {
+                        handleInput(r, c);
+                    }
+                });
+                boardPanel.add(cells[i][j]);
+            }
+        }
 
         verifyBtn = new JButton("Verify");
         solveBtn = new JButton("Solve");
         undoBtn = new JButton("Undo");
 
-        solveBtn.setEnabled(false);
-
-        JPanel buttons = new JPanel();
-        buttons.add(verifyBtn);
-        buttons.add(solveBtn);
-        buttons.add(undoBtn);
-
-        add(buttons, BorderLayout.SOUTH);
-
-        attachHandlers();
-        setVisible(true);
-    }
-
-    // ---------------- Startup ----------------
-
-    private void startupFlow() {
-        Catalog c = facade.getCatalog();
-
-        try {
-            if (c.hasCurrentGame()) {
-                board = facade.getGame('i'); // incomplete
-            }
-            else if (c.hasAllModes()) {
-                char d = askDifficulty();
-                board = facade.getGame(d);
-            }
-            else {
-                int[][] solved = askSolvedBoard();
-                facade.driveGames(solved);
-                char d = askDifficulty();
-                board = facade.getGame(d);
-            }
-        } catch (Exception e) {
-            showError(e.getMessage());
-        }
-        
-         if (board == null) {
-        board = new int[9][9];
-    }
-
-        updateSolveState();
-    }
-
-    // ---------------- Handlers ----------------
-
-    private void attachHandlers() {
-
         verifyBtn.addActionListener(e -> {
-            boolean[][] result = facade.verifyGame(board);
-            // display result (colors / dialog)
-        });
-
-        solveBtn.addActionListener(e -> {
-            try {
-                int[][] solution = facade.solveGame(board);
-                applySolution(solution);
-            } catch (InvalidGameException ex) {
-                showError("Cannot solve");
-            }
+            syncBoardFromUI();
+            highlightErrors(facade.verifyGame(board));
         });
 
         undoBtn.addActionListener(e -> {
-            // undo logic (read last UserAction, revert board)
-            updateSolveState();
+            if (undoManager.canUndo()) {
+                UserAction last = undoManager.popAction();
+                board[last.getX()][last.getY()] = last.getPrev();
+                syncUIWithBoard();
+            }
         });
+
+        solveBtn.addActionListener(e -> {
+    try {
+        syncBoardFromUI();
+
+        Game g = new Game(board);
+
+        int[][] moves = facade.solveGame(g);
+
+        for (int[] m : moves) {
+            board[m[0]][m[1]] = m[2];
+        }
+
+       
+        syncUIWithBoard();
+
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Solver works only when empty cells are between 1 and 5",
+            "Solver Error",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+});
+
+
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(verifyBtn); btnPanel.add(solveBtn); btnPanel.add(undoBtn);
+
+        add(boardPanel, BorderLayout.CENTER);
+        add(btnPanel, BorderLayout.SOUTH);
+        setLocationRelativeTo(null);
+        setVisible(true);
     }
 
-    // ---------------- Logic ----------------
-
-    private void updateSolveState() {
-        solveBtn.setEnabled(countZeros(board) == 5);
+    private void startupFlow() {
+        try {
+            Catalog cat = facade.getCatalog();
+            if (cat.hasCurrentGame()) board = facade.getGame('i');
+            else if (cat.hasAllModes()) board = facade.getGame(askDifficulty());
+            else {
+                facade.driveGames(getInitialBoard());
+                board = facade.getGame('e');
+            }
+            syncUIWithBoard();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Loading Error: " + e.getMessage());
+        }
     }
 
-    private int countZeros(int[][] b) {
-        if (b == null) return 0;
-        int c = 0;
-        for (int[] row : b)
-            for (int v : row)
-                if (v == 0) c++;
-        return c;
+    private void handleInput(int r, int c) {
+        try {
+            String text = cells[r][c].getText().trim();
+            int newVal = text.isEmpty() ? 0 : Integer.parseInt(text);
+            if (board[r][c] != newVal) {
+                undoManager.pushAction(new UserAction(r, c, newVal, board[r][c]));
+                board[r][c] = newVal;
+                facade.logUserAction(new UserAction(r, c, newVal, board[r][c]));
+            }
+        } catch (Exception e) {
+            cells[r][c].setText("");
+        }
+        updateSolveBtnState();
     }
 
-    private void applySolution(int[][] sol) {
-        for (int[] s : sol)
-            board[s[0]][s[1]] = s[2];
+    private void syncBoardFromUI() {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                String t = cells[i][j].getText().trim();
+                board[i][j] = t.isEmpty() ? 0 : Integer.parseInt(t);
+            }
+        }
     }
 
-    // ---------------- Helpers ----------------
+    private void syncUIWithBoard() {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                cells[i][j].setText(board[i][j] == 0 ? "" : String.valueOf(board[i][j]));
+                cells[i][j].setBackground(Color.WHITE);
+            }
+        }
+        solveBtn.setEnabled(countZeros() <= 5 && countZeros() > 0);
+
+    }
+
+    private int countZeros() {
+        int count = 0;
+        for (int[] row : board) for (int cell : row) if (cell == 0) count++;
+        return count;
+    }
+
+    private void updateSolveBtnState() {
+        int zeros = 0;
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (board[i][j] == 0) zeros++;
+            }
+        }
+        solveBtn.setEnabled(zeros <= 5 && zeros > 0);
+
+    }
+
+    private void highlightErrors(boolean[][] validity) {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                cells[i][j].setBackground(validity[i][j] ? Color.WHITE : Color.PINK);
+            }
+        }
+    }
 
     private char askDifficulty() {
-        Object[] options = {"Easy", "Medium", "Hard"};
-        int r = JOptionPane.showOptionDialog(this,
-                "Choose difficulty",
-                "Difficulty",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]);
-
-        return (r == 0) ? 'e' : (r == 1) ? 'm' : 'h';
+        String[] options = {"Easy", "Medium", "Hard"};
+        int res = JOptionPane.showOptionDialog(null, "Select Difficulty", "New Game", 0, 3, null, options, options[0]);
+        return res == 1 ? 'm' : res == 2 ? 'h' : 'e';
     }
 
-    private int[][] askSolvedBoard() {
-          return new int[][] {
-        {5,3,4,6,7,8,9,1,2},
-        {6,7,2,1,9,5,3,4,8},
-        {1,9,8,3,4,2,5,6,7},
-        {8,5,9,7,6,1,4,2,3},
-        {4,2,6,8,5,3,7,9,1},
-        {7,1,3,9,2,4,8,5,6},
-        {9,6,1,5,3,7,2,8,4},
-        {2,8,7,4,1,9,6,3,5},
-        {3,4,5,2,8,6,1,7,9}
-    };
-    }
-
-    private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+    private int[][] getInitialBoard() {
+        return new int[][]{{5,3,4,6,7,8,9,1,2},{6,7,2,1,9,5,3,4,8},{1,9,8,3,4,2,5,6,7},
+                           {8,5,9,7,6,1,4,2,3},{4,2,6,8,5,3,7,9,1},{7,1,3,9,2,4,8,5,6},
+                           {9,6,1,5,3,7,2,8,4},{2,8,7,4,1,9,6,3,5},{3,4,5,2,8,6,1,7,9}};
     }
 }
