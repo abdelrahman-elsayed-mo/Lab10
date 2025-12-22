@@ -15,6 +15,7 @@ package view;
 
 import Control.Catalog;
 import Control.Game;
+import Exceptions.InvalidGameException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -91,16 +92,12 @@ public class SudokuGameView extends JFrame {
        
         syncUIWithBoard();
 
+    } catch (InvalidGameException ex) {
+        JOptionPane.showMessageDialog(this, ex.getMessage(), "Solver Error", JOptionPane.ERROR_MESSAGE);
     } catch (Exception ex) {
-        JOptionPane.showMessageDialog(
-            this,
-            "Solver works only when empty cells are between 1 and 5",
-            "Solver Error",
-            JOptionPane.ERROR_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, "An unexpected error occurred: " + ex.getMessage());
     }
 });
-
 
         JPanel btnPanel = new JPanel();
         btnPanel.add(verifyBtn); btnPanel.add(solveBtn); btnPanel.add(undoBtn);

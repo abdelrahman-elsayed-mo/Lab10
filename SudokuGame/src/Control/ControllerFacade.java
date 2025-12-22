@@ -95,7 +95,7 @@ public class ControllerFacade implements Viewable {
         try {
             return solver.solve();
         } catch (Exception e) {
-            throw new InvalidGameException(e.getMessage());
+            throw new InvalidGameException("No solution found for this configuration.");
         }
     }
 
